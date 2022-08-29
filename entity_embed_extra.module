@@ -1,0 +1,112 @@
+<?php
+
+/**
+ * @file
+ * Contains entity_embed_extra.module.
+ */
+use Drupal\Core\Routing\RouteMatchInterface;
+
+/**
+ * Implements hook_help().
+ */
+function entity_embed_extra_help($route_name, RouteMatchInterface $route_match) {
+    switch ($route_name) {
+        // Main module help for the entity_embed_extra module.
+        case 'help.page.entity_embed_extra':
+            $output = '';
+            $output .= '<h3>' . t('About') . '</h3>';
+            $output .= '<p>' . t('Entity Embed - Extra Embed template definitions') . '</p>';
+            return $output;
+
+        default:
+    }
+}
+
+/**
+ * Implements hook_theme().
+ * // enable to debug default embed template.
+
+  function entity_embed_extra_theme() {
+  return [
+  'entity_embed_container' => [
+  'render element' => 'element',
+  ],
+  ];
+  }
+ */
+
+/**
+ * Implements hook_theme_suggestions_HOOK_alter().
+ * based on : https://www.drupal.org/project/entity_embed/issues/3136142
+ */
+function entity_embed_extra_theme_suggestions_entity_embed_container_alter(array &$suggestions, array $variables) {
+    // Add further theme hook suggestions for embed_button and displayed entity:
+    if (!empty($variables['element']['#context'])) {
+        $data_embed_button = $variables['element']['#context']['data-embed-button'];
+        $data_entity_embed_display = str_replace([':', '.'], '_', $variables['element']['#context']['data-entity-embed-display']);
+        $data_entity_type = $variables['element']['#context']['data-entity-type'];
+        $data_entity_instance_type = entity_embed_extra_get_entity_type($variables['element']['#context']['data-entity-type'], $variables['element']['#context']['data-entity-uuid']);
+
+        if (!empty($variables['element']['#context']['data-embed-button'])) {
+            $suggestions[] = 'entity_embed_container__embed_button_' . $data_embed_button;
+        }
+        if (!empty($variables['element']['#context']['data-entity-embed-display'])) {
+            $suggestions[] = 'entity_embed_container__embed_display_' . $data_entity_embed_display;
+        }
+        if (!empty($data_embed_button) && !empty($data_entity_embed_display)) {
+            $suggestions[] = 'entity_embed_container__embed_button_' . $data_embed_button . '__embed_display_' . $data_entity_embed_display;
+        }
+        if (!empty($data_embed_button) && !empty($data_entity_embed_display) && !empty($data_entity_type)) {
+            $suggestions[] = 'entity_embed_container__type_' . $data_entity_type . '__entity_type_' . $data_entity_instance_type['type'];
+        }
+        if (!empty($data_embed_button) && !empty($data_entity_embed_display) && !empty($data_entity_type)) {
+            $suggestions[] = 'entity_embed_container__type_' . $data_entity_type . '__entity_type_' . $data_entity_instance_type['type'] . '__display_' . $data_entity_embed_display;
+        }
+        if (!empty($data_embed_button) && !empty($data_entity_instance_type) && !empty($data_entity_type)) {
+            $suggestions[] = 'entity_embed_container__type_' . $data_entity_type . '__entity_type_' . $data_entity_instance_type['type'] . '__id_' . $data_entity_instance_type['id'];
+        }
+        if (!empty($data_embed_button) && !empty($data_entity_instance_type) && !empty($data_entity_type)) {
+            $suggestions[] = 'entity_embed_container__type_' . $data_entity_type . '__entity_type_' . $data_entity_instance_type['type'] . '__uuid_' . $variables['element']['#context']['data-entity-uuid'];
+        }
+    }
+}
+
+function entity_embed_extra_get_entity_type($entity_type, $uuid) {
+    $target_entity_type = null;
+    $result = null;
+
+    switch ($entity_type) {
+        case 'media':
+            $target_entity_type = 'media';
+            $target_type_id = 'bundle';
+            $target_id = 'mid';
+            break;
+        case 'block_content':
+            $target_entity_type = 'block_content';
+            $target_type_id = 'type';
+            $target_id = 'id';
+            break;
+        case 'node':
+            $target_entity_type = 'node';
+            $target_type_id = 'type';
+            $target_id = 'nid';
+            break;
+    }
+
+    if (!is_null($target_entity_type)) {
+        $database = \Drupal::database();
+        $query = $database->select($target_entity_type, 'et');
+        $query->condition('et.uuid', $uuid, '=');
+        $query->fields('et', [$target_type_id, $target_id, 'uuid']);
+
+        $qresult = $query->execute();
+
+        while ($record = $qresult->fetchAssoc()) {
+            $result['type'] = str_ireplace(['_', ' '], ['-', '-'], $record[$target_type_id]);
+            $result['id'] = $record[$target_id];
+            $result['uuid'] = $record['uuid'];
+        }
+    }
+
+    return $result;
+}

@@ -1,0 +1,9 @@
+name: 'Entity Embed - Extras'
+type: module
+description: 'Entity Embed - Extra Embed template definitions'
+core: 8.x
+package: 'Custom'
+core_version_requirement: ^8 || ^9
+version: 9.4.5
+dependencies:
+    - entity_embed
